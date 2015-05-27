@@ -36,7 +36,15 @@
 
 int in_callback;
 
-void do_hypervisor_callback(struct pt_regs *regs)
+/* Called from the interrupt handler when an event is pending.
+ * This default implementation calls do_event immendiately (from within
+ * the interrupt handler) for each pending event.
+ *
+ * If you want to handle events synchronously (e.g. checking for pending
+ * events yourself just before blocking), override this with a version
+ * that just clears evtchn_upcall_pending and returns.
+ */
+__attribute__((weak)) void do_hypervisor_callback(struct pt_regs *regs)
 {
     unsigned long  l1, l2, l1i, l2i;
     unsigned int   port;
@@ -64,7 +72,7 @@ void do_hypervisor_callback(struct pt_regs *regs)
             l2 &= ~(1UL << l2i);
 
             port = (l1i * (sizeof(unsigned long) * 8)) + l2i;
-			do_event(port, regs);
+            do_event(port, regs);
         }
     }
 
@@ -73,18 +81,26 @@ void do_hypervisor_callback(struct pt_regs *regs)
 
 void force_evtchn_callback(void)
 {
+#ifdef XEN_HAVE_PV_UPCALL_MASK
     int save;
+#endif
     vcpu_info_t *vcpu;
     vcpu = &HYPERVISOR_shared_info->vcpu_info[smp_processor_id()];
+#ifdef XEN_HAVE_PV_UPCALL_MASK
     save = vcpu->evtchn_upcall_mask;
+#endif
 
     while (vcpu->evtchn_upcall_pending) {
+#ifdef XEN_HAVE_PV_UPCALL_MASK
         vcpu->evtchn_upcall_mask = 1;
+#endif
         barrier();
         do_hypervisor_callback(NULL);
         barrier();
+#ifdef XEN_HAVE_PV_UPCALL_MASK
         vcpu->evtchn_upcall_mask = save;
         barrier();
+#endif
     };
 }
 
@@ -110,7 +126,9 @@ inline void unmask_evtchn(uint32_t port)
               &vcpu_info->evtchn_pending_sel) )
     {
         vcpu_info->evtchn_upcall_pending = 1;
+#ifdef XEN_HAVE_PV_UPCALL_MASK
         if ( !vcpu_info->evtchn_upcall_mask )
+#endif
             force_evtchn_callback();
     }
 }

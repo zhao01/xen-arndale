@@ -13,6 +13,8 @@
 #include <lwip/sys.h>
 #include <stdarg.h>
 
+void do_exit(void);
+
 /* Is called to initialize the sys_arch layer */
 void sys_init(void)
 {
@@ -236,7 +238,7 @@ sys_thread_t sys_thread_new(char *name, void (* thread)(void *arg), void *arg, i
 {
     struct thread *t;
     if (stacksize > STACK_SIZE) {
-	printk("Can't start lwIP thread: stack size %d is too large for our %d\n", stacksize, STACK_SIZE);
+	printk("Can't start lwIP thread: stack size %d is too large for our %d\n", stacksize, (int) STACK_SIZE);
 	do_exit();
     }
     lwip_thread = t = create_thread(name, thread, arg);

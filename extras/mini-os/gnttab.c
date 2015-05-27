@@ -20,13 +20,7 @@
 #include <mini-os/gnttab.h>
 #include <mini-os/semaphore.h>
 
-#define NR_RESERVED_ENTRIES 8
-
-/* NR_GRANT_FRAMES must be less than or equal to that configured in Xen */
-#define NR_GRANT_FRAMES 4
-#define NR_GRANT_ENTRIES (NR_GRANT_FRAMES * PAGE_SIZE / sizeof(grant_entry_t))
-
-static grant_entry_t *gnttab_table;
+grant_entry_t *gnttab_table;
 static grant_ref_t gnttab_list[NR_GRANT_ENTRIES];
 #ifdef GNT_DEBUG
 static char inuse[NR_GRANT_ENTRIES];
@@ -164,7 +158,7 @@ gnttabop_error(int16_t status)
 {
     status = -status;
     if (status < 0 || status >= ARRAY_SIZE(gnttabop_error_msgs))
-	return "bad status";
+        return "bad status";
     else
         return gnttabop_error_msgs[status];
 }
@@ -172,8 +166,6 @@ gnttabop_error(int16_t status)
 void
 init_gnttab(void)
 {
-    struct gnttab_setup_table setup;
-    unsigned long frames[NR_GRANT_FRAMES];
     int i;
 
 #ifdef GNT_DEBUG
@@ -182,12 +174,7 @@ init_gnttab(void)
     for (i = NR_RESERVED_ENTRIES; i < NR_GRANT_ENTRIES; i++)
         put_free_entry(i);
 
-    setup.dom = DOMID_SELF;
-    setup.nr_frames = NR_GRANT_FRAMES;
-    set_xen_guest_handle(setup.frame_list, frames);
-
-    HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &setup, 1);
-    gnttab_table = map_frames(frames, NR_GRANT_FRAMES);
+    gnttab_table = arch_init_gnttab(NR_GRANT_FRAMES);
     printk("gnttab_table mapped at %p.\n", gnttab_table);
 }
 

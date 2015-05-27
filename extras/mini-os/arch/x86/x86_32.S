@@ -11,7 +11,8 @@
 	.ascii	",PAE=yes[extended-cr3]"
 	.ascii	",LOADER=generic"
 	.byte	0
-.text
+
+.section .bootcode
 
 .globl _start, shared_info, hypercall_page
                         
@@ -20,7 +21,7 @@ _start:
         lss stack_start,%esp
         andl $(~(__STACK_SIZE-1)), %esp
         push %esi 
-        call start_kernel
+        call arch_init
 
 stack_start:
 	.long stack+(2*__STACK_SIZE), __KERNEL_SS
@@ -33,6 +34,8 @@ shared_info:
 
 hypercall_page:
         .org 0x3000
+
+.text
 
 ES		= 0x20
 ORIG_EAX	= 0x24

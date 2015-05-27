@@ -26,12 +26,18 @@
 #include <mini-os/events.h>
 #include <mini-os/wait.h>
 #include <mini-os/xmalloc.h>
+#include <mini-os/lib.h>
 #include <errno.h>
 #include <stdbool.h>
 
 #ifndef min
 	#define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
 #endif
+#define ADJUST_TIMEOUTS_TO_STANDARD(initial,standard,timeout_no)			\
+	if((initial) < (standard)){							\
+		(initial) = (standard);							\
+		printk("Timeout %c was adjusted to standard value.\n",timeout_no);	\
+	}
 
 #define TPM_HEADER_SIZE 10
 
@@ -611,7 +617,7 @@ s_time_t tpm_calc_ordinal_duration(struct tpm_chip *chip,
 
 
 static int locality_enabled(struct tpm_chip* tpm, int l) {
-   return tpm->enabled_localities & (1 << l);
+   return l >= 0 && tpm->enabled_localities & (1 << l);
 }
 
 static int check_locality(struct tpm_chip* tpm, int l) {
@@ -906,7 +912,7 @@ static ssize_t tpm_transmit(struct tpm_chip *chip, const uint8_t *buf,
    //down(&chip->tpm_mutex);
 
    if ((rc = tpm_tis_send(chip, (uint8_t *) buf, count)) < 0) {
-      printk("tpm_transmit: tpm_send: error %ld\n", rc);
+      printk("tpm_transmit: tpm_send: error %ld\n", (long) rc);
       goto out;
    }
 
@@ -938,7 +944,7 @@ static ssize_t tpm_transmit(struct tpm_chip *chip, const uint8_t *buf,
 
 out_recv:
    if((rc = tpm_tis_recv(chip, (uint8_t *) buf, bufsiz)) < 0) {
-      printk("tpm_transmit: tpm_recv: error %d\n", rc);
+      printk("tpm_transmit: tpm_recv: error %d\n", (int) rc);
    }
 out:
    //up(&chip->tpm_mutex);
@@ -977,7 +983,7 @@ int tpm_get_timeouts(struct tpm_chip *chip)
 
    if((rc = transmit_cmd(chip, &tpm_cmd, TPM_INTERNAL_RESULT_SIZE,
 	 "attempting to determine the timeouts")) != 0) {
-      printk("transmit failed %d\n", rc);
+      printk("transmit failed %d\n", (int) rc);
       goto duration;
    }
 
@@ -996,15 +1002,22 @@ int tpm_get_timeouts(struct tpm_chip *chip)
    }
    if (timeout)
       chip->timeout_a = MICROSECS(timeout * scale); /*Convert to msec */
+   ADJUST_TIMEOUTS_TO_STANDARD(chip->timeout_a,MILLISECS(TIS_SHORT_TIMEOUT),'a');
+
    timeout = be32_to_cpu(timeout_cap->b);
    if (timeout)
       chip->timeout_b = MICROSECS(timeout * scale); /*Convert to msec */
+   ADJUST_TIMEOUTS_TO_STANDARD(chip->timeout_b,MILLISECS(TIS_LONG_TIMEOUT),'b');
+
    timeout = be32_to_cpu(timeout_cap->c);
    if (timeout)
       chip->timeout_c = MICROSECS(timeout * scale); /*Convert to msec */
+   ADJUST_TIMEOUTS_TO_STANDARD(chip->timeout_c,MILLISECS(TIS_SHORT_TIMEOUT),'c');
+
    timeout = be32_to_cpu(timeout_cap->d);
    if (timeout)
       chip->timeout_d = MICROSECS(timeout * scale); /*Convert to msec */
+   ADJUST_TIMEOUTS_TO_STANDARD(chip->timeout_d,MILLISECS(TIS_SHORT_TIMEOUT),'d');
 
 duration:
    tpm_cmd.header.in = tpm_getcap_header;
@@ -1132,7 +1145,7 @@ struct tpm_chip* init_tpm_tis(unsigned long baseaddr, int localities, unsigned i
       if(locality_enabled(tpm, i)) {
 	 /* Map the page in now */
 	 if((tpm->pages[i] = ioremap_nocache(addr, PAGE_SIZE)) == NULL) {
-	    printk("Unable to map iomem page a address %p\n", addr);
+	    printk("Unable to map iomem page a address %lx\n", addr);
 	    goto abort_egress;
 	 }
 

@@ -379,7 +379,11 @@ void *sbrk(ptrdiff_t increment)
     unsigned long new_brk = old_brk + increment;
 
     if (new_brk > heap_end) {
-	printk("Heap exhausted: %p + %lx = %p > %p\n", old_brk, increment, new_brk, heap_end);
+	printk("Heap exhausted: %lx + %lx = %p > %p\n",
+			old_brk,
+			(unsigned long) increment,
+			(void *) new_brk,
+			(void *) heap_end);
 	return NULL;
     }
     
@@ -409,8 +413,8 @@ void init_mm(void)
      * now we can initialise the page allocator
      */
     printk("MM: Initialise page allocator for %lx(%lx)-%lx(%lx)\n",
-           (u_long)to_virt(PFN_PHYS(start_pfn)), PFN_PHYS(start_pfn), 
-           (u_long)to_virt(PFN_PHYS(max_pfn)), PFN_PHYS(max_pfn));
+           (u_long)to_virt(PFN_PHYS(start_pfn)), (u_long)PFN_PHYS(start_pfn),
+           (u_long)to_virt(PFN_PHYS(max_pfn)), (u_long)PFN_PHYS(max_pfn));
     init_page_allocator(PFN_PHYS(start_pfn), PFN_PHYS(max_pfn));
     printk("MM: done\n");
 

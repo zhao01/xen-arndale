@@ -24,6 +24,8 @@ DECLARE_WAIT_QUEUE_HEAD(netfront_queue);
 #endif
 
 
+void mask_evtchn(uint32_t port);
+void unmask_evtchn(uint32_t port);
 
 #define NET_TX_RING_SIZE __CONST_RING_SIZE(netif_tx, PAGE_SIZE)
 #define NET_RX_RING_SIZE __CONST_RING_SIZE(netif_rx, PAGE_SIZE)
@@ -99,6 +101,7 @@ void network_rx(struct netfront_dev *dev)
     struct netif_rx_response *rx;
     int nr_consumed, some, more, i, notify;
 
+    //printk("yytang: network_rx, NET_RX_RING_SIZE = %d\n", NET_RX_RING_SIZE);
 
 moretodo:
     rp = dev->rx.sring->rsp_prod;
@@ -188,7 +191,8 @@ void network_tx_buf_gc(struct netfront_dev *dev)
     do {
         prod = dev->tx.sring->rsp_prod;
         rmb(); /* Ensure we see responses up to 'rp'. */
-
+        
+        //printk("yytang: cons = %d, prod = %d.\n", dev->tx.rsp_cons, prod);
         for (cons = dev->tx.rsp_cons; cons != prod; cons++) 
         {
             struct netif_tx_response *txrsp;
@@ -262,6 +266,7 @@ void netfront_select_handler(evtchn_port_t port, struct pt_regs *regs, void *dat
 static void free_netfront(struct netfront_dev *dev)
 {
     int i;
+    //printk("yytang: free_netfront, NET_RX_RING_SIZE = %d\n", NET_RX_RING_SIZE);
 
     for(i=0;i<NET_TX_RING_SIZE;i++)
 	down(&dev->tx_sem);
@@ -327,8 +332,8 @@ struct netfront_dev *init_netfront(char *_nodename, void (*thenetif_rx)(unsigned
     dev->fd = -1;
 #endif
 
-    printk("net TX ring size %d\n", NET_TX_RING_SIZE);
-    printk("net RX ring size %d\n", NET_RX_RING_SIZE);
+    printk("net TX ring size %llu\n", (unsigned long long) NET_TX_RING_SIZE);
+    printk("net RX ring size %llu\n", (unsigned long long) NET_RX_RING_SIZE);
     init_SEMAPHORE(&dev->tx_sem, NET_TX_RING_SIZE);
     for(i=0;i<NET_TX_RING_SIZE;i++)
     {
@@ -457,11 +462,13 @@ done:
             xenbus_unwatch_path_token(XBT_NIL, path, path);
             goto error;
         }
-
+        printk("ip = %s\n", *ip);
         if (ip) {
             snprintf(path, sizeof(path), "%s/ip", dev->backend);
             xenbus_read(XBT_NIL, path, ip);
         }
+        printk("path = %s\n", path);
+        printk("ip = %s\n", *ip);
     }
 
     printk("**************************\n");
@@ -603,6 +610,8 @@ void init_rx_buffers(struct netfront_dev *dev)
 
 void netfront_xmit(struct netfront_dev *dev, unsigned char* data,int len)
 {
+    //printk("yytang: netfront_xmit\n");
+
     int flags;
     struct netif_tx_request *tx;
     RING_IDX i;
@@ -644,6 +653,7 @@ void netfront_xmit(struct netfront_dev *dev, unsigned char* data,int len)
 
     if(notify) notify_remote_via_evtchn(dev->evtchn);
 
+    //printk("yytang: notify = %d\n", notify);
     local_irq_save(flags);
     network_tx_buf_gc(dev);
     local_irq_restore(flags);

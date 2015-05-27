@@ -12,6 +12,8 @@ export XEN_INTERFACE_VERSION
 # If not x86 then use $(XEN_TARGET_ARCH)
 ifeq ($(findstring x86_,$(XEN_TARGET_ARCH)),x86_)
 TARGET_ARCH_FAM = x86
+else ifeq ($(findstring arm,$(XEN_TARGET_ARCH)),arm)
+TARGET_ARCH_FAM = arm
 else
 TARGET_ARCH_FAM = $(XEN_TARGET_ARCH)
 endif
@@ -28,7 +30,7 @@ export TARGET_ARCH_FAM
 ARCH_LINKS =
 
 # The path pointing to the architecture specific header files.
-ARCH_INC := $(TARGET_ARCH_FAM)
+ARCH_INC := $(TARGET_ARCH_DIR)/include
 
 # For possible special header directories.
 # This can be overwritten from arch specific rules.
@@ -38,7 +40,7 @@ EXTRA_INC = $(ARCH_INC)
 # This must be before include minios.mk!
 include $(MINI-OS_ROOT)/$(TARGET_ARCH_DIR)/arch.mk
 
-extra_incl := $(foreach dir,$(EXTRA_INC),-isystem $(MINI-OS_ROOT)/include/$(dir))
+extra_incl := $(foreach dir,$(EXTRA_INC),-isystem $(MINI-OS_ROOT)/$(dir))
 
 DEF_CPPFLAGS += -isystem $(MINI-OS_ROOT)/include
 DEF_CPPFLAGS += -D__MINIOS__
@@ -46,7 +48,7 @@ DEF_CPPFLAGS += -D__MINIOS__
 ifeq ($(libc),y)
 DEF_CPPFLAGS += -DHAVE_LIBC
 DEF_CPPFLAGS += -isystem $(MINI-OS_ROOT)/include/posix
-DEF_CPPFLAGS += -isystem $(XEN_ROOT)/tools/xenstore
+DEF_CPPFLAGS += -isystem $(XEN_ROOT)/tools/xenstore/include
 endif
 
 ifneq ($(LWIPDIR),)

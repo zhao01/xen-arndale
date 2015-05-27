@@ -56,8 +56,20 @@ void test_xenbus(void);
 
 static void xenbus_tester(void *p)
 {
-    printk("Xenbus tests disabled, because of a Xend bug.\n");
-    /* test_xenbus(); */
+    test_xenbus();
+}
+#endif
+
+#ifndef HAVE_LIBC
+/* Should be random enough for our uses */
+int rand(void)
+{
+    static unsigned int previous;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    previous += tv.tv_sec + tv.tv_usec;
+    previous *= RAND_MIX;
+    return previous;
 }
 #endif
 
@@ -117,7 +129,7 @@ static void blk_read_completed(struct blkfront_aiocb *aiocb, int ret)
 {
     struct blk_req *req = aiocb->data;
     if (ret)
-        printk("got error code %d when reading at offset %ld\n", ret, aiocb->aio_offset);
+        printk("got error code %d when reading at offset %ld\n", ret, (long) aiocb->aio_offset);
     else
         blk_size_read += blk_info.sector_size;
     free(aiocb->aio_buf);
@@ -238,7 +250,9 @@ static void blkfront_thread(void *p)
         blkfront_aio_poll(blk_dev);
         gettimeofday(&tv, NULL);
         if (tv.tv_sec > lasttime + 10) {
-            printk("%llu read, %llu write\n", blk_size_read, blk_size_write);
+            printk("%llu read, %llu write\n",
+                    (unsigned long long) blk_size_read,
+                    (unsigned long long) blk_size_write);
             lasttime = tv.tv_sec;
         }
 

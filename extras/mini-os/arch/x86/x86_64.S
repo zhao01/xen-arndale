@@ -1,5 +1,5 @@
 #include <mini-os/os.h>
-#include <mini-os/x86/arch_limits.h>
+#include <mini-os/arch_limits.h>
 #include <xen/features.h>
 
 .section __xen_guest
@@ -10,7 +10,8 @@
 	.ascii	",HYPERCALL_PAGE=0x2"
 	.ascii	",LOADER=generic"
 	.byte	0
-.text
+
+.section .bootcode
 
 #define ENTRY(X) .globl X ; X :
 .globl _start, shared_info, hypercall_page
@@ -21,7 +22,7 @@ _start:
         movq stack_start(%rip),%rsp
         andq $(~(__STACK_SIZE-1)), %rsp
         movq %rsi,%rdi
-        call start_kernel
+        call arch_init
 
 stack_start:
         .quad stack+(2*__STACK_SIZE)
@@ -35,6 +36,7 @@ shared_info:
 hypercall_page:
         .org 0x3000
 
+.text
 
 #define XEN_GET_VCPU_INFO(reg)	movq HYPERVISOR_shared_info,reg
 #define XEN_PUT_VCPU_INFO(reg)

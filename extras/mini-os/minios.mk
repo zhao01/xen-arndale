@@ -4,9 +4,13 @@
 
 debug = y
 
+GCC_INSTALL = $(shell LANG=C gcc -print-search-dirs | sed -n -e 's/install: \(.*\)/\1/p')
+
 # Define some default flags.
 # NB. '-Wcast-qual' is nasty, so I omitted it.
-DEF_CFLAGS += -fno-builtin -Wall -Werror -Wredundant-decls -Wno-format -Wno-redundant-decls
+DEF_CFLAGS += -nostdinc
+DEF_CFLAGS += -isystem $(GCC_INSTALL)include
+DEF_CFLAGS += -fno-builtin -Wall -Werror -Wredundant-decls -Wno-format -Wno-redundant-decls -Wformat
 DEF_CFLAGS += $(call cc-option,$(CC),-fno-stack-protector,)
 DEF_CFLAGS += $(call cc-option,$(CC),-fgnu89-inline)
 DEF_CFLAGS += -Wstrict-prototypes -Wnested-externs -Wpointer-arith -Winline
@@ -23,11 +27,18 @@ DEF_CFLAGS += -g
 #DEF_CFLAGS += -DGNT_DEBUG
 #DEF_CFLAGS += -DGNTMAP_DEBUG
 else
-DEF_CFLAGS += -O3
+DEF_CFLAGS += -O3 -fno-tree-loop-distribute-patterns
 endif
 
 # Make the headers define our internal stuff
 DEF_CFLAGS += -D__INSIDE_MINIOS__
+
+# The name of the architecture specific library.
+# This is on x86_32: libx86_32.a
+# $(ARCH_LIB) has to built in the architecture specific directory.
+ARCH_LIB_NAME = $(XEN_TARGET_ARCH)
+ARCH_LIB := lib$(ARCH_LIB_NAME).a
+ARCH_LDFLAGS += -l$(ARCH_LIB_NAME)
 
 # Build the CFLAGS and ASFLAGS for compiling and assembling.
 # DEF_... flags are the common mini-os flags,
@@ -35,7 +46,7 @@ DEF_CFLAGS += -D__INSIDE_MINIOS__
 CFLAGS := $(DEF_CFLAGS) $(ARCH_CFLAGS)
 CPPFLAGS := $(DEF_CPPFLAGS) $(ARCH_CPPFLAGS)
 ASFLAGS := $(DEF_ASFLAGS) $(ARCH_ASFLAGS)
-LDFLAGS := $(DEF_LDFLAGS) $(ARCH_LDFLAGS)
+LDFLAGS := $(DEF_LDFLAGS) $(ARCH_LDFLAGS) -L$(TARGET_ARCH_DIR)
 
 # Special build dependencies.
 # Rebuild all after touching this/these file(s)
@@ -52,12 +63,6 @@ HDRS += $(extra_heads)
 
 # Add the special header directories to the include paths.
 override CPPFLAGS := $(CPPFLAGS) $(extra_incl)
-
-# The name of the architecture specific library.
-# This is on x86_32: libx86_32.a
-# $(ARCH_LIB) has to built in the architecture specific directory.
-ARCH_LIB_NAME = $(XEN_TARGET_ARCH)
-ARCH_LIB := lib$(ARCH_LIB_NAME).a
 
 # This object contains the entrypoint for startup from Xen.
 # $(HEAD_ARCH_OBJ) has to be built in the architecture specific directory.

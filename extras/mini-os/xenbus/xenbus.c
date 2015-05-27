@@ -276,7 +276,7 @@ static void xenbus_evtchn_handler(evtchn_port_t port, struct pt_regs *regs,
 }
 
 static int nr_live_reqs;
-static spinlock_t req_lock = SPIN_LOCK_UNLOCKED;
+static DEFINE_SPINLOCK(req_lock);
 static DECLARE_WAIT_QUEUE_HEAD(req_wq);
 
 /* Release a xenbus identifier */
@@ -337,8 +337,8 @@ void init_xenbus(void)
 		      xenbus_evtchn_handler,
               NULL);
     unmask_evtchn(start_info.store_evtchn);
-    printk("xenbus initialised on irq %d mfn %#lx\n",
-	   err, start_info.store_mfn);
+    printk("xenbus initialised on irq %d mfn %#llx\n",
+	   err, (unsigned long long) start_info.store_mfn);
 }
 
 void fini_xenbus(void)

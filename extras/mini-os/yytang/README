@@ -1,0 +1,29 @@
+Configure files for mini-os
+
+1. Current mini-os.cfg
+	kernel = "/root/mini-os.img"
+	memory = 16 
+	name = "Mini-OS"
+	vcpus = 1
+	serial="pty"
+	vif = ['ip=192.168.0.170,bridge=xenbr0']
+	disk = [ 'phy:/dev/loop2,xvda,w' ]
+
+
+2. To use network
+	make LWIPDIR=lwip-1.3.2 -j4
+
+3. To use the disk
+    Modify blkfront.c 
+    old - char* nodename = _nodename ? _nodename : "device/vbd/768";
+    new - char* nodename = _nodename ? _nodename : "device/vbd/51712";
+    - 768 for hda
+    - 51712 for xvda
+
+    dd if=/dev/zero bs=512 count=16k of=Mini-OS.img
+	losetup /dev/loop2 Mini-OS.img
+
+4. To run mini-os
+	losetup /dev/loop2 Mini-OS.img
+	xl create -c mini-os.cfg
+

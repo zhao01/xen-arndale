@@ -198,6 +198,8 @@ netfront_input(struct netif *netif, unsigned char* data, int len)
   switch (htons(ethhdr->type)) {
   /* IP packet? */
   case ETHTYPE_IP:
+   // printk("yytang: received a IP packet!\n");
+
 #if 0
 /* CSi disabled ARP table update on ingress IP packets.
    This seems to work but needs thorough testing. */
@@ -213,11 +215,14 @@ netfront_input(struct netif *netif, unsigned char* data, int len)
     break;
       
   case ETHTYPE_ARP:
+    //printk("yytang: received a ARP packet!\n");
+
     /* pass p to ARP module  */
     etharp_arp_input(netif, (struct eth_addr *) netif->hwaddr, p);
     break;
 
   default:
+    //printk("yytang: received a unknown packet!\n");
     pbuf_free(p);
     p = NULL;
     break;
